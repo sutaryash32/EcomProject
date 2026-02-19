@@ -3,7 +3,7 @@ import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { DataService, Order } from '../../services/data.service';
 import { FormsModule } from '@angular/forms';
-import { Observable, BehaviorSubject, combineLatest, map, switchMap } from 'rxjs';
+import { Observable, BehaviorSubject, combineLatest, map } from 'rxjs';
 
 @Component({
   selector: 'app-orders',
@@ -17,10 +17,38 @@ import { Observable, BehaviorSubject, combineLatest, map, switchMap } from 'rxjs
           <h1 class="text-3xl font-black text-slate-900 dark:text-slate-100">Orders</h1>
           <p class="text-slate-500 dark:text-slate-400 mt-1">Manage and track your customer orders in real-time.</p>
         </div>
-        <button (click)="createNewOrder()" class="flex items-center gap-2 px-5 py-2.5 bg-primary text-white text-sm font-bold rounded-lg hover:bg-primary/90 transition-all shadow-sm shadow-primary/20">
-          <span class="material-symbols-outlined text-[20px]">add</span>
-          Create New Order
+        <button (click)="showCreateForm = !showCreateForm" class="flex items-center gap-2 px-5 py-2.5 bg-primary text-white text-sm font-bold rounded-lg hover:bg-primary/90 transition-all shadow-sm shadow-primary/20">
+          <span class="material-symbols-outlined text-[20px]">{{showCreateForm ? 'close' : 'add'}}</span>
+          {{showCreateForm ? 'Cancel' : 'Create New Order'}}
         </button>
+      </div>
+
+      <!-- Create Order Form -->
+      <div *ngIf="showCreateForm" class="bg-white dark:bg-slate-900 rounded-xl border border-primary/30 p-6 mb-8 shadow-lg">
+        <h3 class="text-lg font-bold mb-4">New Order Details</h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase mb-2">Customer Name</label>
+            <input [(ngModel)]="newOrder.customerName" type="text" class="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg py-2 px-4 text-sm" placeholder="Enter customer name">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase mb-2">Amount</label>
+            <input [(ngModel)]="newOrder.amount" type="number" class="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg py-2 px-4 text-sm" placeholder="0.00">
+          </div>
+          <div>
+            <label class="block text-xs font-bold text-slate-400 uppercase mb-2">Status</label>
+            <select [(ngModel)]="newOrder.status" class="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg py-2 px-4 text-sm">
+              <option value="Pending">Pending</option>
+              <option value="Shipped">Shipped</option>
+              <option value="Processing">Processing</option>
+            </select>
+          </div>
+        </div>
+        <div class="mt-6 flex justify-end">
+          <button (click)="submitOrder()" class="bg-primary text-white px-6 py-2 rounded-lg font-bold text-sm shadow-md hover:opacity-90 transition-all">
+            Save Order
+          </button>
+        </div>
       </div>
 
       <!-- Filter & Search Bar -->
@@ -144,6 +172,12 @@ export class OrdersComponent implements OnInit {
   private activeTabSubject = new BehaviorSubject<string>('All Orders');
 
   filteredOrders$!: Observable<Order[]>;
+  showCreateForm = false;
+  newOrder: any = {
+    customerName: '',
+    amount: 0,
+    status: 'Pending'
+  };
 
   constructor(private dataService: DataService) {}
 
@@ -152,7 +186,7 @@ export class OrdersComponent implements OnInit {
       this.activeTabSubject,
       this.localSearchSubject,
       this.dataService.globalSearch$,
-      this.dataService.orders$ // listen to changes in orders too
+      this.dataService.orders$
     ]).pipe(
       map(([activeTab, localSearch, globalSearch, allOrders]) => {
         return allOrders.filter(o => {
@@ -195,18 +229,27 @@ export class OrdersComponent implements OnInit {
     }
   }
 
-  createNewOrder() {
+  submitOrder() {
+    if (!this.newOrder.customerName) {
+      alert('Please enter a customer name.');
+      return;
+    }
     const id = `ORD-${Math.floor(10000 + Math.random() * 90000)}`;
-    const newOrder: Order = {
+    const initials = this.newOrder.customerName.split(' ').map((n: string) => n[0]).join('').toUpperCase().substring(0, 2);
+
+    const order: Order = {
       id,
-      customerName: 'New Customer',
-      customerInitials: 'NC',
-      status: 'Pending',
+      customerName: this.newOrder.customerName,
+      customerInitials: initials || '??',
+      status: this.newOrder.status,
       date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }),
-      amount: Math.round(Math.random() * 500 * 100) / 100,
+      amount: this.newOrder.amount,
       items: 1
     };
-    this.dataService.addOrder(newOrder);
+
+    this.dataService.addOrder(order);
+    this.showCreateForm = false;
+    this.newOrder = { customerName: '', amount: 0, status: 'Pending' };
   }
 
   exportOrders() {

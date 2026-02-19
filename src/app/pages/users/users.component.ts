@@ -26,9 +26,37 @@ import { Observable, BehaviorSubject, combineLatest, map } from 'rxjs';
               <h1 class="text-slate-900 dark:text-white text-3xl font-black leading-tight tracking-tight">Users</h1>
               <p class="text-slate-500 dark:text-slate-400 text-base">Manage team members, roles, and system access permissions.</p>
             </div>
-            <button (click)="addUser()" class="flex items-center justify-center rounded-lg h-10 px-5 bg-primary text-white text-sm font-bold shadow-sm hover:bg-primary/90 transition-all gap-2">
-              <span class="material-symbols-outlined">add</span>
-              <span>Add User</span>
+            <button (click)="showAddForm = !showAddForm" class="flex items-center justify-center rounded-lg h-10 px-5 bg-primary text-white text-sm font-bold shadow-sm hover:bg-primary/90 transition-all gap-2">
+              <span class="material-symbols-outlined">{{showAddForm ? 'close' : 'add'}}</span>
+              <span>{{showAddForm ? 'Cancel' : 'Add User'}}</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Add User Form -->
+        <div *ngIf="showAddForm" class="mx-6 lg:mx-10 mb-6 bg-white dark:bg-slate-900 rounded-xl border border-primary/30 p-6 shadow-lg">
+          <h3 class="text-lg font-bold mb-4">New User Details</h3>
+          <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div>
+              <label class="block text-xs font-bold text-slate-400 uppercase mb-2">Full Name</label>
+              <input [(ngModel)]="newUser.name" type="text" class="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg py-2 px-4 text-sm" placeholder="Enter full name">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-400 uppercase mb-2">Email Address</label>
+              <input [(ngModel)]="newUser.email" type="email" class="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg py-2 px-4 text-sm" placeholder="email@example.com">
+            </div>
+            <div>
+              <label class="block text-xs font-bold text-slate-400 uppercase mb-2">Initial Role</label>
+              <select [(ngModel)]="newUser.role" class="w-full bg-slate-50 dark:bg-slate-800 border-none rounded-lg py-2 px-4 text-sm">
+                <option value="Admin">Admin</option>
+                <option value="Editor">Editor</option>
+                <option value="Viewer">Viewer</option>
+              </select>
+            </div>
+          </div>
+          <div class="mt-6 flex justify-end">
+            <button (click)="submitUser()" class="bg-primary text-white px-6 py-2 rounded-lg font-bold text-sm shadow-md hover:opacity-90 transition-all">
+              Create User
             </button>
           </div>
         </div>
@@ -187,7 +215,7 @@ import { Observable, BehaviorSubject, combineLatest, map } from 'rxjs';
         <div class="mt-auto p-6 border-t border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-slate-900/50 sticky bottom-0 z-10">
           <div class="flex gap-3">
             <button (click)="closeDrawer()" class="flex-1 py-2.5 rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-400 font-bold text-sm hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">Discard</button>
-            <button (click)="saveUser()" class="flex-1 py-2.5 rounded-lg bg-primary text-white font-bold text-sm shadow-md hover:bg-primary/90 transition-all">Save Changes</button>
+            <button (click)="saveUser()" class="flex-1 py-2.5 rounded-lg bg-primary text-white font-bold text-sm shadow-md hover:opacity-90 transition-all">Save Changes</button>
           </div>
         </div>
       </aside>
@@ -208,6 +236,12 @@ export class UsersComponent implements OnInit {
   filteredUsers$!: Observable<User[]>;
   selectedUser: User | null = null;
   tempRole: any = '';
+  showAddForm = false;
+  newUser: any = {
+    name: '',
+    email: '',
+    role: 'Viewer'
+  };
 
   constructor(private dataService: DataService) {}
 
@@ -272,19 +306,24 @@ export class UsersComponent implements OnInit {
     }
   }
 
-  addUser() {
-    const newUser: User = {
+  submitUser() {
+    if (!this.newUser.name || !this.newUser.email) {
+      alert('Please fill in all fields.');
+      return;
+    }
+    const user: User = {
       id: Math.random().toString(36).substr(2, 9),
-      name: 'New Team Member',
-      email: 'new.member@ecommerce.com',
-      role: 'Viewer',
+      name: this.newUser.name,
+      email: this.newUser.email,
+      role: this.newUser.role,
       lastActive: 'Just now',
       avatarUrl: 'https://i.pravatar.cc/150?u=' + Math.random(),
       status: 'Active',
       memberSince: new Date().toLocaleDateString('en-US', { month: 'short', year: 'numeric' })
     };
-    this.dataService.addUser(newUser);
-    this.selectUser(newUser);
+    this.dataService.addUser(user);
+    this.showAddForm = false;
+    this.newUser = { name: '', email: '', role: 'Viewer' };
   }
 
   notImplemented(feature: string) {

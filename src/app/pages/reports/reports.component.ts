@@ -1,5 +1,7 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { DataService } from '../../services/data.service';
+import { map } from 'rxjs';
 
 @Component({
   selector: 'app-reports',
@@ -32,17 +34,60 @@ import { CommonModule } from '@angular/common';
 
       <!-- KPI Cards -->
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        <div *ngFor="let kpi of kpis" class="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+        <!-- Revenue -->
+        <div class="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
           <div class="flex justify-between items-start mb-4">
-            <div [class]="'p-2 rounded-lg ' + kpi.iconBg + ' ' + kpi.iconColor">
-              <span class="material-symbols-outlined">{{kpi.icon}}</span>
+            <div class="p-2 rounded-lg bg-primary/10 text-primary">
+              <span class="material-symbols-outlined">payments</span>
             </div>
-            <span [class]="'text-xs font-bold px-2 py-1 rounded-full ' + (kpi.trendUp ? 'text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30' : 'text-rose-600 bg-rose-100 dark:bg-rose-900/30')">
-              {{kpi.trendUp ? '+' : ''}}{{kpi.trend}}%
+            <span class="text-xs font-bold px-2 py-1 rounded-full text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30">
+              +12.5%
             </span>
           </div>
-          <p class="text-slate-500 dark:text-slate-400 text-sm font-medium">{{kpi.label}}</p>
-          <h3 class="text-2xl font-bold text-slate-900 dark:text-white mt-1">{{kpi.value}}</h3>
+          <p class="text-slate-500 dark:text-slate-400 text-sm font-medium">Total Revenue</p>
+          <h3 class="text-2xl font-bold text-slate-900 dark:text-white mt-1">{{(totalRevenue$ | async) | currency}}</h3>
+        </div>
+
+        <!-- Orders -->
+        <div class="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+          <div class="flex justify-between items-start mb-4">
+            <div class="p-2 rounded-lg bg-purple-100 dark:bg-purple-900/30 text-purple-600">
+              <span class="material-symbols-outlined">shopping_cart</span>
+            </div>
+            <span class="text-xs font-bold px-2 py-1 rounded-full text-rose-600 bg-rose-100 dark:bg-rose-900/30">
+              -2.4%
+            </span>
+          </div>
+          <p class="text-slate-500 dark:text-slate-400 text-sm font-medium">Total Orders</p>
+          <h3 class="text-2xl font-bold text-slate-900 dark:text-white mt-1">{{(totalOrders$ | async)}}</h3>
+        </div>
+
+        <!-- Active Users -->
+        <div class="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+          <div class="flex justify-between items-start mb-4">
+            <div class="p-2 rounded-lg bg-orange-100 dark:bg-orange-900/30 text-orange-600">
+              <span class="material-symbols-outlined">group</span>
+            </div>
+            <span class="text-xs font-bold px-2 py-1 rounded-full text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30">
+              +5.7%
+            </span>
+          </div>
+          <p class="text-slate-500 dark:text-slate-400 text-sm font-medium">Active Users</p>
+          <h3 class="text-2xl font-bold text-slate-900 dark:text-white mt-1">{{(activeUsers$ | async)}}</h3>
+        </div>
+
+        <!-- Avg Order Value -->
+        <div class="bg-white dark:bg-slate-900 p-6 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm">
+          <div class="flex justify-between items-start mb-4">
+            <div class="p-2 rounded-lg bg-teal-100 dark:bg-teal-900/30 text-teal-600">
+              <span class="material-symbols-outlined">avg_pace</span>
+            </div>
+            <span class="text-xs font-bold px-2 py-1 rounded-full text-emerald-600 bg-emerald-100 dark:bg-emerald-900/30">
+              +1.2%
+            </span>
+          </div>
+          <p class="text-slate-500 dark:text-slate-400 text-sm font-medium">Avg. Order Value</p>
+          <h3 class="text-2xl font-bold text-slate-900 dark:text-white mt-1">{{(avgOrderValue$ | async) | currency}}</h3>
         </div>
       </div>
 
@@ -140,14 +185,14 @@ import { CommonModule } from '@angular/common';
   styles: []
 })
 export class ReportsComponent {
-  months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  private dataService = inject(DataService);
 
-  kpis = [
-    { label: 'Total Revenue', value: '$128,430.00', icon: 'payments', trend: 12.5, trendUp: true, iconBg: 'bg-primary/10', iconColor: 'text-primary' },
-    { label: 'Total Orders', value: '1,240', icon: 'shopping_cart', trend: 2.4, trendUp: false, iconBg: 'bg-purple-100 dark:bg-purple-900/30', iconColor: 'text-purple-600' },
-    { label: 'Active Users', value: '8,520', icon: 'group', trend: 5.7, trendUp: true, iconBg: 'bg-orange-100 dark:bg-orange-900/30', iconColor: 'text-orange-600' },
-    { label: 'Avg. Order Value', value: '$103.57', icon: 'avg_pace', trend: 1.2, trendUp: true, iconBg: 'bg-teal-100 dark:bg-teal-900/30', iconColor: 'text-teal-600' }
-  ];
+  totalOrders$ = this.dataService.orders$.pipe(map(o => o.length));
+  totalRevenue$ = this.dataService.orders$.pipe(map(orders => orders.reduce((acc, curr) => acc + curr.amount, 0)));
+  avgOrderValue$ = this.dataService.orders$.pipe(map(orders => orders.length ? (orders.reduce((acc, curr) => acc + curr.amount, 0) / orders.length) : 0));
+  activeUsers$ = this.dataService.users$.pipe(map(u => u.length));
+
+  months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
   categories = [
     { name: 'Electronics', height: '60%' },
