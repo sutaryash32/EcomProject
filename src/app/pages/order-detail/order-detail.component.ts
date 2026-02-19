@@ -1,31 +1,37 @@
-import { Component } from '@angular/core';
+import { Component, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
+import { ActivatedRoute, RouterLink } from '@angular/router';
+import { DataService, Order } from '../../services/data.service';
+import { map, Observable, switchMap } from 'rxjs';
 
 @Component({
   selector: 'app-order-detail',
   standalone: true,
-  imports: [CommonModule],
+  imports: [CommonModule, RouterLink],
   template: `
-    <main class="flex-1 max-w-[1440px] mx-auto w-full p-6 space-y-6">
+    <main class="flex-1 max-w-[1440px] mx-auto w-full p-6 space-y-6" *ngIf="order$ | async as order">
       <!-- Order Header Area -->
       <div class="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div class="space-y-1">
           <div class="flex items-center gap-3">
-            <h1 class="text-3xl font-black tracking-tight text-slate-900 dark:text-white">Order #ORD-7742</h1>
-            <span class="px-2.5 py-0.5 rounded-full text-xs font-bold bg-primary/10 text-primary border border-primary/20">PROCESSING</span>
+            <h1 class="text-3xl font-black tracking-tight text-slate-900 dark:text-white">Order #{{order.id}}</h1>
+            <span [class]="'px-2.5 py-0.5 rounded-full text-xs font-bold ' + getStatusClass(order.status)">{{order.status | uppercase}}</span>
           </div>
-          <p class="text-slate-500 text-sm">Placed on October 12, 2023 at 10:30 AM • ID: 550e8400-e29b-41d4</p>
+          <p class="text-slate-500 text-sm">Placed on {{order.date}} • ID: 550e8400-e29b-41d4</p>
         </div>
         <div class="flex items-center gap-3">
-          <button class="flex items-center gap-2 px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+          <button (click)="downloadInvoice(order.id)" class="flex items-center gap-2 px-4 py-2 border border-slate-200 dark:border-slate-700 rounded-lg text-sm font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
             <span class="material-symbols-outlined text-sm">download</span>
             Download Invoice
           </button>
-          <button class="flex items-center gap-2 px-4 py-2 border border-rose-200 dark:border-rose-900/30 text-rose-600 dark:text-rose-400 rounded-lg text-sm font-bold hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors">
+          <button
+            *ngIf="order.status !== 'Cancelled'"
+            (click)="cancelOrder(order)"
+            class="flex items-center gap-2 px-4 py-2 border border-rose-200 dark:border-rose-900/30 text-rose-600 dark:text-rose-400 rounded-lg text-sm font-bold hover:bg-rose-50 dark:hover:bg-rose-900/20 transition-colors">
             <span class="material-symbols-outlined text-sm">cancel</span>
             Cancel Order
           </button>
-          <button class="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold shadow-sm hover:shadow-md transition-all active:scale-95">
+          <button (click)="updateStatus(order)" class="flex items-center gap-2 px-4 py-2 bg-primary text-white rounded-lg text-sm font-bold shadow-sm hover:shadow-md transition-all active:scale-95">
             <span class="material-symbols-outlined text-sm">sync_alt</span>
             Update Status
           </button>
@@ -40,9 +46,9 @@ import { CommonModule } from '@angular/common';
             <h3 class="text-sm font-bold text-slate-400 uppercase tracking-wider mb-4">Customer Information</h3>
             <div class="space-y-4">
               <div class="flex items-start gap-3">
-                <div class="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold">JD</div>
+                <div class="w-10 h-10 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold">{{order.customerInitials}}</div>
                 <div>
-                  <p class="text-sm font-bold text-slate-900 dark:text-white">Jonathan Doe</p>
+                  <p class="text-sm font-bold text-slate-900 dark:text-white">{{order.customerName}}</p>
                   <p class="text-xs text-slate-500">Customer since 2021</p>
                 </div>
               </div>
@@ -61,10 +67,10 @@ import { CommonModule } from '@angular/common';
           <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm">
             <div class="flex items-center justify-between mb-4">
               <h3 class="text-sm font-bold text-slate-400 uppercase tracking-wider">Shipping Address</h3>
-              <button class="text-primary text-xs font-bold hover:underline">Edit</button>
+              <button (click)="notImplemented('Edit Address')" class="text-primary text-xs font-bold hover:underline">Edit</button>
             </div>
             <div class="space-y-1">
-              <p class="text-sm font-medium text-slate-900 dark:text-white">Jonathan Doe</p>
+              <p class="text-sm font-medium text-slate-900 dark:text-white">{{order.customerName}}</p>
               <p class="text-sm text-slate-600 dark:text-slate-400">123 Business Avenue</p>
               <p class="text-sm text-slate-600 dark:text-slate-400">Suite 400</p>
               <p class="text-sm text-slate-600 dark:text-slate-400">San Francisco, CA 94107</p>
@@ -84,7 +90,7 @@ import { CommonModule } from '@angular/common';
           <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
             <div class="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
               <h3 class="font-bold text-slate-900 dark:text-white">Ordered Items</h3>
-              <span class="text-xs font-medium text-slate-500">3 Items</span>
+              <span class="text-xs font-medium text-slate-500">{{order.items}} Items</span>
             </div>
             <div class="overflow-x-auto">
               <table class="w-full text-left">
@@ -111,8 +117,8 @@ import { CommonModule } from '@angular/common';
                       </div>
                     </td>
                     <td class="px-6 py-4 text-center text-sm font-medium text-slate-700 dark:text-slate-300">{{item.qty}}</td>
-                    <td class="px-6 py-4 text-right text-sm font-medium text-slate-700 dark:text-slate-300">{{item.price}}</td>
-                    <td class="px-6 py-4 text-right text-sm font-bold text-slate-900 dark:text-white">{{item.total}}</td>
+                    <td class="px-6 py-4 text-right text-sm font-medium text-slate-700 dark:text-slate-300">{{item.price | currency}}</td>
+                    <td class="px-6 py-4 text-right text-sm font-bold text-slate-900 dark:text-white">{{(item.qty * item.price) | currency}}</td>
                   </tr>
                 </tbody>
               </table>
@@ -123,7 +129,7 @@ import { CommonModule } from '@angular/common';
             <div class="w-full max-w-sm bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-6 shadow-sm space-y-3">
               <div class="flex justify-between text-sm">
                 <span class="text-slate-500">Subtotal</span>
-                <span class="text-slate-900 dark:text-white font-medium">$363.99</span>
+                <span class="text-slate-900 dark:text-white font-medium">{{order.amount | currency}}</span>
               </div>
               <div class="flex justify-between text-sm">
                 <span class="text-slate-500">Shipping (Ground)</span>
@@ -131,11 +137,11 @@ import { CommonModule } from '@angular/common';
               </div>
               <div class="flex justify-between text-sm">
                 <span class="text-slate-500">Tax (CA 8.5%)</span>
-                <span class="text-slate-900 dark:text-white font-medium">$30.94</span>
+                <span class="text-slate-900 dark:text-white font-medium">{{(order.amount * 0.085) | currency}}</span>
               </div>
               <div class="pt-3 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center">
                 <span class="text-base font-bold text-slate-900 dark:text-white">Total Amount</span>
-                <span class="text-xl font-black text-primary">$407.43</span>
+                <span class="text-xl font-black text-primary">{{(order.amount * 1.085 + 12.50) | currency}}</span>
               </div>
             </div>
           </div>
@@ -146,7 +152,7 @@ import { CommonModule } from '@angular/common';
           <div class="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 p-5 shadow-sm sticky top-24">
             <h3 class="text-sm font-bold text-slate-400 uppercase tracking-wider mb-6">Order Timeline</h3>
             <div class="relative space-y-8">
-              <div class="timeline-item relative flex gap-4" *ngFor="let step of timeline; let last = last">
+              <div class="timeline-item relative flex gap-4" *ngFor="let step of getTimeline(order); let last = last">
                 <div class="timeline-line shrink-0 w-6 flex justify-center">
                   <div [class]="'z-10 size-6 rounded-full flex items-center justify-center ' + step.circleClass">
                     <span *ngIf="step.icon" class="material-symbols-outlined text-[14px]">{{step.icon}}</span>
@@ -164,10 +170,16 @@ import { CommonModule } from '@angular/common';
         </aside>
       </div>
     </main>
+    <div *ngIf="!(order$ | async)" class="p-20 text-center">
+       <p class="text-slate-500">Loading order details...</p>
+       <a routerLink="/orders" class="text-primary hover:underline mt-4 block">Back to Orders</a>
+    </div>
   `,
   styles: []
 })
-export class OrderDetailComponent {
+export class OrderDetailComponent implements OnInit {
+  order$!: Observable<Order | undefined>;
+
   items = [
     {
       name: 'Elite Runner X-200',
@@ -175,72 +187,95 @@ export class OrderDetailComponent {
       sku: 'ERX-200-MB-10',
       image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuB0tyoyVhwiMfLbJ2AM185h88b-ZlbujH5JcvfL3Kmn4mPNnQYJp8HTyWPMY-EH-ArjZz_CwMpIlyDkq1sjv1e9P2I3neFD-t0gR9mJ5Tuu9xdIKc4j3DeR_oBiv5TBttPnHyvcExMfZDZ82ZARRLOm5Mm_xsmqbW0UotSIZ6e5eU13M7ybgM6Jr6kDjgCCU7-IK-3PJhHbFX80zrP4PzSt9gdNWyoe4uvHLttb2eOgQ3U9Xm9sHpbdSM_IBkPkatKTqxQSfz5kXEPb',
       qty: 1,
-      price: '$129.00',
-      total: '$129.00'
-    },
-    {
-      name: 'Minimalist Pro Watch',
-      details: 'Case: Silver / Strap: Leather',
-      sku: 'MW-01-SIL',
-      image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCjSMLg_peC7zg98Xm7YyeTPcyz_f8dI27XRIa2FiETVo2M5K3WiSavdB7oOQz9zrNbiDhZRqwJVbXsLOCnnU3i_0aTUypuLQ3BuZtjqBgldLkRvmRjxS2IKqMAk-7bMFLWI7MwbLZKU2lpgSfoVVsR4YzR0fh2BMzRhDon-AEj4B2fh3q7vuBluYPSIUC-AEyGhEVREGcxGbF2POCAGX0VYWyZopPc2kwZXq6u038XE75aTkxAbsmdBAH0Qhn4eTbs7dloVlkH8r0g',
-      qty: 1,
-      price: '$85.00',
-      total: '$85.00'
-    },
-    {
-      name: 'Sonic Over-Ear Headphones',
-      details: 'Color: Matte Black',
-      sku: 'SH-100-BLK',
-      image: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCK8QpamX46gx38PE12RxigIIAFGxAu8kSz3pRkcJrxrTnuiLyXPKcDBfGwOhxoNEfRY0kuwgC2p6GWaoKM_5fxSyYLzYM75K-ZH0m94CFd2mQbdYX70mpqZuWu44OyB4gD6rK9sGpjBqzOOob2UwmyVU1Uci6q6kl9McOmlOJqjKiSwko2lZgTSBW-Y3nL-cCurRFqbwuH4S1TTcN_v_MelA8-jT88uw-ehONPaZlMCTF79QegRc8ORiqzf0SM0wy_On3OSvpqPULe',
-      qty: 1,
-      price: '$149.99',
-      total: '$149.99'
+      price: 129.00
     }
   ];
 
-  timeline = [
-    {
-      title: 'Order Placed',
-      time: 'Oct 12, 2023 at 10:30 AM',
-      note: 'Web checkout by customer',
-      icon: 'check',
-      circleClass: 'bg-primary text-white',
-      titleClass: 'text-slate-900 dark:text-white',
-      pending: false
-    },
-    {
-      title: 'Payment Confirmed',
-      time: 'Oct 12, 2023 at 10:32 AM',
-      note: 'Stripe transaction #8812',
-      icon: 'check',
-      circleClass: 'bg-primary text-white',
-      titleClass: 'text-slate-900 dark:text-white',
-      pending: false
-    },
-    {
-      title: 'Processing',
-      time: 'Oct 12, 2023 at 11:15 AM',
-      note: 'Ready for warehouse picking',
-      pulse: true,
-      circleClass: 'bg-white dark:bg-slate-900 border-2 border-primary text-primary',
-      titleClass: 'text-primary',
-      pending: false
-    },
-    {
-      title: 'Shipped',
-      time: 'Not yet updated',
-      icon: 'local_shipping',
-      circleClass: 'bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-400',
-      titleClass: 'text-slate-600 dark:text-slate-400',
-      pending: true
-    },
-    {
-      title: 'Delivered',
-      time: 'Not yet updated',
-      icon: 'inventory_2',
-      circleClass: 'bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-400',
-      titleClass: 'text-slate-600 dark:text-slate-400',
-      pending: true
+  constructor(
+    private route: ActivatedRoute,
+    private dataService: DataService
+  ) {}
+
+  ngOnInit() {
+    this.order$ = this.route.paramMap.pipe(
+      switchMap(params => {
+        const id = params.get('id');
+        return this.dataService.orders$.pipe(
+          map(orders => orders.find(o => o.id === id))
+        );
+      })
+    );
+  }
+
+  getStatusClass(status: string) {
+    switch (status) {
+      case 'Shipped': return 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400';
+      case 'Pending': return 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400';
+      case 'Cancelled': return 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
+      case 'Processing': return 'bg-primary/10 text-primary border border-primary/20';
+      default: return 'bg-slate-100 text-slate-700';
     }
-  ];
+  }
+
+  getTimeline(order: Order) {
+    return [
+      {
+        title: 'Order Placed',
+        time: order.date,
+        note: 'Web checkout by customer',
+        icon: 'check',
+        circleClass: 'bg-primary text-white',
+        titleClass: 'text-slate-900 dark:text-white',
+        pending: false
+      },
+      {
+        title: 'Payment Confirmed',
+        time: order.date,
+        note: 'Stripe transaction #8812',
+        icon: 'check',
+        circleClass: 'bg-primary text-white',
+        titleClass: 'text-slate-900 dark:text-white',
+        pending: false
+      },
+      {
+        title: order.status === 'Cancelled' ? 'Cancelled' : 'Processing',
+        time: order.date,
+        note: order.status === 'Cancelled' ? 'Order was cancelled by staff' : 'Ready for warehouse picking',
+        pulse: order.status === 'Processing',
+        icon: order.status === 'Cancelled' ? 'close' : (order.status === 'Shipped' ? 'check' : undefined),
+        circleClass: order.status === 'Cancelled' ? 'bg-rose-500 text-white' : (order.status === 'Processing' ? 'bg-white dark:bg-slate-900 border-2 border-primary text-primary' : 'bg-primary text-white'),
+        titleClass: order.status === 'Cancelled' ? 'text-rose-500' : (order.status === 'Processing' ? 'text-primary' : 'text-slate-900 dark:text-white'),
+        pending: false
+      },
+      {
+        title: 'Shipped',
+        time: order.status === 'Shipped' ? order.date : 'Not yet updated',
+        icon: 'local_shipping',
+        circleClass: order.status === 'Shipped' ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-800 border border-slate-300 dark:border-slate-700 text-slate-400',
+        titleClass: order.status === 'Shipped' ? 'text-slate-900 dark:text-white' : 'text-slate-600 dark:text-slate-400',
+        pending: order.status !== 'Shipped'
+      }
+    ];
+  }
+
+  downloadInvoice(id: string) {
+    alert(`Downloading invoice for order #${id}...`);
+  }
+
+  cancelOrder(order: Order) {
+    if (confirm('Are you sure you want to cancel this order?')) {
+      this.dataService.updateOrder({ ...order, status: 'Cancelled' });
+    }
+  }
+
+  updateStatus(order: Order) {
+    const statuses: ('Pending' | 'Processing' | 'Shipped' | 'Cancelled')[] = ['Pending', 'Processing', 'Shipped', 'Cancelled'];
+    const currentIndex = statuses.indexOf(order.status);
+    const nextIndex = (currentIndex + 1) % statuses.length;
+    this.dataService.updateOrder({ ...order, status: statuses[nextIndex] });
+  }
+
+  notImplemented(feature: string) {
+    alert(`${feature} is not implemented in this demo.`);
+  }
 }
